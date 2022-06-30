@@ -1,131 +1,159 @@
 #include <iostream>
+#include <regex>
 #include <stdexcept>
 #include <string>
-#include <regex>
+#include <string_view>
 
-using namespace std;
-
-#define CORRECT_NUMBER_OF_ARGUMENTS 3
-#define NUMBERS_SIZE 10;
-#define LETTERS_SIZE 26;
+constexpr int correct_number_of_arguments = 3;
+constexpr int numbers_size = 10;
+constexpr int letters_size = 26;
 
 // Returns true if str is made of digits only
-bool isDigits(const string &str) {
-	// Ignore the first character if its a plus or a minus
-	if ((str[0] == '-') || (str[0] == '+')) {
-		return all_of(str.begin() + 1, str.end(), ::isdigit);
-	}
-	return all_of(str.begin(), str.end(), ::isdigit);
+bool
+isDigits(const std::string_view str)
+{
+  auto str_begin = str.begin();
+  // ignoring the first character if it's a plus or a minus
+  if ((str[0] == '-') || (str[0] == '+')) {
+    str_begin += 1;
+  }
+  return all_of(str_begin, str.end(), ::isdigit);
 }
 
 // Returns true if str is made of digits and letters only
 // Ignores spaces
-bool isDigitsOrLetters(const string &str) {
-	return all_of(str.begin(), str.end(), [](char c) {
-		return isalnum(c) || isspace(c);
-	});
+bool
+isDigitsOrLetters(const std::string_view str)
+{
+  return all_of(
+    str.begin(), str.end(), [](char c) { return isalnum(c) || isspace(c); });
 }
 
 // Verifies the input arguments
-void verifyArgs(int *argc, char **argv) {
-	// Verify the number of arguments
-    if (*argc != (CORRECT_NUMBER_OF_ARGUMENTS + 1)) {
-        throw invalid_argument("Invalid number of arguments.\nPlease provide " + to_string(CORRECT_NUMBER_OF_ARGUMENTS) + " arguments!");
+void
+verifyArgs(int* argc, char** argv)
+{
+  // verifying the number of arguments
+  if (*argc != (correct_number_of_arguments + 1)) {
+    throw std::invalid_argument(
+      "Invalid number of arguments.\nPlease provide " +
+      std::to_string(correct_number_of_arguments) + " arguments!");
+  }
+
+  // verifying the encode/decode argument
+  if ((argv[1][0] != 'd') && (argv[1][0] != 'e')) {
+    throw std::invalid_argument(
+      "Invalid argument: <[e]ncode/[d]ecode>.\nUsage: "
+      "ccipher <[e]ncode/[d]ecode> <shift value> <text>");
+  }
+
+  // verifying the shift value
+  if (!isDigits(argv[2])) {
+    throw std::invalid_argument(
+      "Invalid argument: <shift value>.\nPlease use only numbers.");
+  }
+
+  // verifying the text
+  if (!isDigitsOrLetters(argv[3])) {
+    throw std::invalid_argument(
+      "Invalid argument: <text>.\nPlease use only numbers and letters.");
+  }
+}
+
+// Shifts the input string by the shift value
+// Numbers get shifted separately from letters
+std::string
+shiftString(const std::string_view str_to_shift, int shift_value)
+{
+  // preparing number- and letter-specific shift values with overhead removed
+  int number_shift = shift_value % numbers_size;
+  int letter_shift = shift_value % letters_size;
+
+  // adjusting the shift value if its negative
+  if (number_shift < 0) {
+    number_shift += 10;
+  }
+  if (letter_shift < 0) {
+    letter_shift += 26;
+  }
+
+  // creating output text and char buffers
+  std::string output_str = "";
+  unsigned int output_char_buffer = NULL;
+
+  // shifting individual string chars
+  for (const char c_to_shift : str_to_shift) {
+    // shifting numerals
+    if ((c_to_shift >= '0') && (c_to_shift <= '9')) {
+      // saving the would-be numeric char value
+      output_char_buffer = c_to_shift + number_shift;
+      // shifting the char value back if it moves out of bounds
+      if (output_char_buffer > '9') {
+        output_char_buffer -= numbers_size;
+      }
+
+      // shifting large letters
+    } else if ((c_to_shift >= 'A') && (c_to_shift <= 'Z')) {
+      // saving the would-be numeric char value
+      output_char_buffer = c_to_shift + letter_shift;
+      // shifting the char value back if it moves out of bounds
+      if (output_char_buffer > 'Z') {
+        output_char_buffer -= letters_size;
+      }
+
+      // shifting small letters
+    } else if ((c_to_shift >= 'a') && (c_to_shift <= 'z')) {
+      // saving the would-be numeric char value
+      output_char_buffer = c_to_shift + letter_shift;
+      // shifting the char value back if it moves out of bounds
+      if (output_char_buffer > 'z') {
+        output_char_buffer -= letters_size;
+      }
+
+      // saving a space char if no alphanumeric characters were found
+    } else {
+      output_char_buffer = ' ';
     }
 
-	// Verify the encode/decode argument
-	if ((argv[1][0] != 'd') && (argv[1][0] != 'e')){
-		throw invalid_argument("Invalid argument: <[e]ncode/[d]ecode>.\nUsage: ccipher <[e]ncode/[d]ecode> <shift value> <text>");
-	}
+    // adding the current char to the output string
+    output_str += output_char_buffer;
+  }
 
-	// Verify the shift value
-	if (!isDigits(argv[2])){
-		throw invalid_argument("Invalid argument: <shift value>.\nPlease use only numbers.");
-	}
-
-	// Verify the text
-	if (!isDigitsOrLetters(argv[3])){
-		throw invalid_argument("Invalid argument: <text>.\nPlease use only numbers and letters.");
-	}
+  // returning the output string
+  return output_str;
 }
 
 // Usage: ccipher <[e]ncode/[d]ecode> <shift value> <text>
-int main(int argc, char *argv[]) {
-	// verifying execution arguments
-    try {
-        verifyArgs (&argc, argv);
-    }
-    catch(invalid_argument& err) {
-        cerr << err.what() << endl;
-        return -1;
-    }
+int
+main(int argc, char* argv[])
+{
+  // verifying execution arguments
+  try {
+    verifyArgs(&argc, argv);
+    // outputing error message if invalid arguments found
+  } catch (std::invalid_argument& err) {
+    std::cerr << err.what() << std::endl;
+    return -1;
+  }
 
-	string input_text = argv[3];
-	int shift_value = stoi(argv[2]);
-	if (argv[1][0] == 'd') {
-		shift_value *= -1;
-	}
+  // storing the input text
+  std::string input_text = argv[3];
 
-	int number_shift = shift_value % NUMBERS_SIZE;
-	int letter_shift = shift_value % LETTERS_SIZE;
+  // storing the shift value
+  int shift_value = std::stoi(argv[2]);
+  // negating the shift value if decoding mode was chosen
+  if (argv[1][0] == 'd') {
+    shift_value *= -1;
+  }
 
-	if (number_shift < 0) {
-		number_shift += 10;
-	}
+  // creating the output text by encoding/decoding the input text
+  std::string output_text = shiftString(input_text, shift_value);
 
-	if (letter_shift < 0) {
-		letter_shift += 26;
-    }
-
-	string output_text = "";
-	unsigned int output_char_buffer = NULL;
-
-	// Encoding/Decoding
-	for (unsigned int i = 0; i < input_text.length(); i++) {
-		// Encoding/Decoding numerals
-		if ((input_text[i] >= '0') && (input_text[i] <= '9')) {
-			// Save the would-be numeric char value
-			output_char_buffer = input_text[i] + number_shift;
-			// If the char moves out of bounds
-			if (output_char_buffer > '9') {
-				// Shift the char value back
-				output_char_buffer -= NUMBERS_SIZE;
-			}
-
-		// Encoding/Decoding large letters
-		} else if ((input_text[i] >= 'A') && (input_text[i] <= 'Z')) {
-			// Save the would-be numeric char value
-			output_char_buffer = input_text[i] + letter_shift;
-			// If the char moves out of bounds
-			if (output_char_buffer > 'Z') {
-				// Shift the char value back
-				output_char_buffer -= LETTERS_SIZE;
-			}
-			
-		// Encoding/Decoding small letters
-		} else if ((input_text[i] >= 'a') && (input_text[i] <= 'z')) {
-			// Save the would-be numeric char value
-			output_char_buffer = input_text[i] + letter_shift;
-			// If the char moves out of bounds
-			if (output_char_buffer > 'z') {
-				// Shift the char value back
-				output_char_buffer -= LETTERS_SIZE;
-			}
-		
-		// If no alphanumeric characters were found, save a space character
-		} else {
-			output_char_buffer = ' ';
-		}
-		
-		// Append the char value to the output string
-		output_text += output_char_buffer;
-	}
-
-	//return the input and output values
-	cout << "Input text:" << endl;
-    cout << input_text << endl;
-    cout << endl;
-    cout << "Output text:" << endl;
-    cout << output_text << endl;
-    return 0;
+  // returning the input and output values
+  std::cout << "Input text:" << std::endl;
+  std::cout << input_text << std::endl;
+  std::cout << std::endl;
+  std::cout << "Output text:" << std::endl;
+  std::cout << output_text << std::endl;
+  return 0;
 }
