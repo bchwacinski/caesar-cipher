@@ -6,13 +6,15 @@
 using namespace std;
 
 #define CORRECT_NUMBER_OF_ARGUMENTS 3
-
-const char alnum_chars[62] = {'0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z','a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z'};
-
-const uint alnum_size = sizeof(alnum_chars)/sizeof(*alnum_chars);
+#define NUMBERS_SIZE 10;
+#define LETTERS_SIZE 26;
 
 // Returns true if str is made of digits only
 bool isDigits(const string &str) {
+	// Ignore the first character if its a plus or a minus
+	if ((str[0] == '-') || (str[0] == '+')) {
+		return all_of(str.begin() + 1, str.end(), ::isdigit);
+	}
 	return all_of(str.begin(), str.end(), ::isdigit);
 }
 
@@ -58,9 +60,14 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
-	string text = argv[3];
-	int number_shift = stoi(argv[2]) % 10;
-	int letter_shift = stoi(argv[2]) % 26;
+	string input_text = argv[3];
+	int shift_value = stoi(argv[2]);
+	if (argv[1][0] == 'd') {
+		shift_value *= -1;
+	}
+
+	int number_shift = shift_value % NUMBERS_SIZE;
+	int letter_shift = shift_value % LETTERS_SIZE;
 
 	if (number_shift < 0) {
 		number_shift += 10;
@@ -70,25 +77,55 @@ int main(int argc, char *argv[]) {
 		letter_shift += 26;
     }
 
+	string output_text = "";
+	unsigned int output_char_buffer = NULL;
+
 	// Encoding/Decoding
-	for (uint i = 0; i < text.length(); i++) {
-	// translation
-		if ((text[i] >= '0') && (text[i] <= '9')) {
+	for (unsigned int i = 0; i < input_text.length(); i++) {
+		// Encoding/Decoding numerals
+		if ((input_text[i] >= '0') && (input_text[i] <= '9')) {
+			// Save the would-be numeric char value
+			output_char_buffer = input_text[i] + number_shift;
+			// If the char moves out of bounds
+			if (output_char_buffer > '9') {
+				// Shift the char value back
+				output_char_buffer -= NUMBERS_SIZE;
+			}
 
-		}
-
-		if ((text[i] >= 'A') && (text[i] <= 'Z')) {
+		// Encoding/Decoding large letters
+		} else if ((input_text[i] >= 'A') && (input_text[i] <= 'Z')) {
+			// Save the would-be numeric char value
+			output_char_buffer = input_text[i] + letter_shift;
+			// If the char moves out of bounds
+			if (output_char_buffer > 'Z') {
+				// Shift the char value back
+				output_char_buffer -= LETTERS_SIZE;
+			}
 			
+		// Encoding/Decoding small letters
+		} else if ((input_text[i] >= 'a') && (input_text[i] <= 'z')) {
+			// Save the would-be numeric char value
+			output_char_buffer = input_text[i] + letter_shift;
+			// If the char moves out of bounds
+			if (output_char_buffer > 'z') {
+				// Shift the char value back
+				output_char_buffer -= LETTERS_SIZE;
+			}
+		
+		// If no alphanumeric characters were found, save a space character
+		} else {
+			output_char_buffer = ' ';
 		}
-
-		if ((text[i] >= 'a') && (text[i] <= 'z')) {
-			
-		}
-
-	 	text[i] = 97 + (text[i] + shift - 97) % alnum_size;
+		
+		// Append the char value to the output string
+		output_text += output_char_buffer;
 	}
 
-	// //returning the translation
-    cout << endl << "Well done!" << endl;
+	//return the input and output values
+	cout << "Input text:" << endl;
+    cout << input_text << endl;
+    cout << endl;
+    cout << "Output text:" << endl;
+    cout << output_text << endl;
     return 0;
 }
